@@ -1,11 +1,15 @@
 package server
 
 import (
+	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
-func UpdateHandler(storage *MemStorage) http.HandlerFunc {
+func UpdateHandler(storage Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -27,5 +31,49 @@ func UpdateHandler(storage *MemStorage) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func ValueHandler(storage Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		mType := chi.URLParam(r, "type")
+		name := chi.URLParam(r, "name")
+
+		switch mType {
+		case "gauge":
+			val, ok := storage.GetGauge(name)
+			if !ok {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			fmt.Fprintf(w, "%f", val)
+		case "counter":
+			val, ok := storage.GetCounter(name)
+			if !ok {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			fmt.Fprintf(w, "%d", val)
+		default:
+			http.Error(w, "unsupported metric type", http.StatusBadRequest)
+		}
+	}
+}
+
+func ListHandler(storage Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gauges := storage.AllGauges()
+		counters := storage.AllCounters()
+
+		tmpl := `<html><body><h1>Metrics</h1><ul>
+        {{ range $k, $v := .Gauges }}<li>{{$k}} (gauge): {{$v}}</li>{{ end }}
+        {{ range $k, $v := .Counters }}<li>{{$k}} (counter): {{$v}}</li>{{ end }}
+        </ul></body></html>`
+
+		t := template.Must(template.New("metrics").Parse(tmpl))
+		_ = t.Execute(w, map[string]interface{}{
+			"Gauges":   gauges,
+			"Counters": counters,
+		})
 	}
 }

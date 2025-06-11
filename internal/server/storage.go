@@ -7,9 +7,17 @@ import (
 )
 
 type MemStorage struct {
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	gauges   map[string]float64
 	counters map[string]int64
+}
+
+type Storage interface {
+	Update(metricType, name, value string) error
+	AllGauges() map[string]float64
+	AllCounters() map[string]int64
+	GetGauge(name string) (float64, bool)
+	GetCounter(name string) (int64, bool)
 }
 
 func NewMemStorage() *MemStorage {
@@ -40,4 +48,38 @@ func (s *MemStorage) Update(metricType, name, value string) error {
 		return fmt.Errorf("invalid metric type")
 	}
 	return nil
+}
+
+func (m *MemStorage) AllGauges() map[string]float64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make(map[string]float64, len(m.gauges))
+	for k, v := range m.gauges {
+		result[k] = v
+	}
+	return result
+}
+
+func (m *MemStorage) AllCounters() map[string]int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make(map[string]int64, len(m.counters))
+	for k, v := range m.counters {
+		result[k] = v
+	}
+	return result
+}
+
+func (m *MemStorage) GetGauge(name string) (float64, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	val, ok := m.gauges[name]
+	return val, ok
+}
+
+func (m *MemStorage) GetCounter(name string) (int64, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	val, ok := m.counters[name]
+	return val, ok
 }
