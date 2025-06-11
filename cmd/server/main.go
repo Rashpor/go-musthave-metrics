@@ -4,19 +4,35 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/Rashpor/go-musthave-metrics/internal/server"
 )
 
+func getEnvOrDefaultString(envName string, fallback string) string {
+	if val := os.Getenv(envName); val != "" {
+		return val
+	}
+	return fallback
+}
+
 func main() {
-	addr := flag.String("a", "localhost:8080", "address and port to run server on")
+
+	flagAddr := flag.String("a", "", "address to run HTTP server on")
 	flag.Parse()
 
+	defaultAddr := "localhost:8080"
+
+	addr := getEnvOrDefaultString("ADDRESS", *flagAddr)
+	if addr == "" {
+		addr = defaultAddr
+	}
+
+	log.Printf("Starting server on %s...", addr)
 	storage := server.NewMemStorage()
 	router := server.NewRouter(storage)
-
-	log.Printf("Starting server on %s...\n", *addr)
-	if err := http.ListenAndServe(*addr, router); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+	err := http.ListenAndServe(addr, router)
+	if err != nil {
+		log.Fatalf("Server error: %v", err)
 	}
 }
