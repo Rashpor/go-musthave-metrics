@@ -27,9 +27,9 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (s *MemStorage) Update(metricType, name, value string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (m *MemStorage) Update(metricType, name, value string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	switch metricType {
 	case "gauge":
@@ -37,13 +37,13 @@ func (s *MemStorage) Update(metricType, name, value string) error {
 		if err != nil {
 			return fmt.Errorf("invalid gauge value")
 		}
-		s.gauges[name] = v
+		m.gauges[name] = v
 	case "counter":
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return fmt.Errorf("invalid counter value")
 		}
-		s.counters[name] += v
+		m.counters[name] += v
 	default:
 		return fmt.Errorf("invalid metric type")
 	}

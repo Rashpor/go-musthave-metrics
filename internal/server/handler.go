@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -46,7 +47,7 @@ func ValueHandler(storage Storage) http.HandlerFunc {
 				http.Error(w, "not found", http.StatusNotFound)
 				return
 			}
-			fmt.Fprintf(w, "%f", val)
+			fmt.Fprint(w, strconv.FormatFloat(val, 'f', -1, 64))
 		case "counter":
 			val, ok := storage.GetCounter(name)
 			if !ok {
