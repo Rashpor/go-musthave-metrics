@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 
@@ -8,11 +9,14 @@ import (
 )
 
 func main() {
+	addr := flag.String("a", "localhost:8080", "address and port to run server on")
+	flag.Parse()
+
 	storage := server.NewMemStorage()
 	router := server.NewRouter(storage)
 
-	log.Println("Starting server on :8080...")
-	if err := http.ListenAndServe(":8080", router); err != nil {
-		log.Fatalf("server failed: %v", err)
+	log.Printf("Starting server on %s...\n", *addr)
+	if err := http.ListenAndServe(*addr, router); err != nil {
+		log.Fatalf("failed to start server: %v", err)
 	}
 }

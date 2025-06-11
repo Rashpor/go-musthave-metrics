@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"time"
 
@@ -8,33 +9,29 @@ import (
 )
 
 func main() {
-	const (
-		pollInterval   = 2 * time.Second
-		reportInterval = 10 * time.Second
-		serverAddress  = "http://localhost:8080"
-	)
+	addr := flag.String("a", "localhost:8080", "address of the metrics server")
+	reportInterval := flag.Int("r", 10, "report interval in seconds")
+	pollInterval := flag.Int("p", 2, "poll interval in seconds")
+	flag.Parse()
 
 	collector := agent.NewCollector()
-	sender := agent.NewSender(serverAddress)
+	sender := agent.NewSender("http://" + *addr)
 
-	// Тикер сбора метрик
-	go func() {
-		ticker := time.NewTicker(pollInterval)
-		defer ticker.Stop()
+	pollTicker := time.NewTicker(time.Duration(*pollInterval) * time.Second)
+	reportTicker := time.NewTicker(time.Duration(*reportInterval) * time.Second)
+	defer pollTicker.Stop()
+	defer reportTicker.Stop()
 
-		for range ticker.C {
+	for {
+		select {
+		case <-pollTicker.C:
 			collector.Collect()
-		}
-	}()
 
-	// Тикер отправки метрик
-	ticker := time.NewTicker(reportInterval)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		err := sender.Send(collector.GetMetrics())
-		if err != nil {
-			log.Printf("failed to send metrics: %v", err)
+		case <-reportTicker.C:
+			gauges, counters := collector.GetMetrics()
+			if err := sender.Send(gauges, counters); err != nil {
+				log.Printf("failed to send metrics: %v", err)
+			}
 		}
 	}
 }
