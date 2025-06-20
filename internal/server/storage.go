@@ -16,8 +16,8 @@ type Storage interface {
 	Update(metricType, name, value string) error
 	AllGauges() map[string]float64
 	AllCounters() map[string]int64
-	GetGauge(name string) (float64, bool)
-	GetCounter(name string) (int64, bool)
+	GetGauge(name string) (float64, error)
+	GetCounter(name string) (int64, error)
 }
 
 func NewMemStorage() *MemStorage {
@@ -35,17 +35,17 @@ func (m *MemStorage) Update(metricType, name, value string) error {
 	case "gauge":
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return fmt.Errorf("invalid gauge value")
+			return fmt.Errorf("invalid gauge value: %w", err)
 		}
 		m.gauges[name] = v
 	case "counter":
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return fmt.Errorf("invalid counter value")
+			return fmt.Errorf("invalid counter value: %w", err)
 		}
 		m.counters[name] += v
 	default:
-		return fmt.Errorf("invalid metric type")
+		return fmt.Errorf("invalid metric type: %s", metricType)
 	}
 	return nil
 }
@@ -70,16 +70,22 @@ func (m *MemStorage) AllCounters() map[string]int64 {
 	return result
 }
 
-func (m *MemStorage) GetGauge(name string) (float64, bool) {
+func (m *MemStorage) GetGauge(name string) (float64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	val, ok := m.gauges[name]
-	return val, ok
+	if !ok {
+		return 0, fmt.Errorf("gauge metric not found: %s", name)
+	}
+	return val, nil
 }
 
-func (m *MemStorage) GetCounter(name string) (int64, bool) {
+func (m *MemStorage) GetCounter(name string) (int64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	val, ok := m.counters[name]
-	return val, ok
+	if !ok {
+		return 0, fmt.Errorf("counter metric not found: %s", name)
+	}
+	return val, nil
 }

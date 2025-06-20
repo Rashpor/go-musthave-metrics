@@ -42,16 +42,16 @@ func ValueHandler(storage Storage) http.HandlerFunc {
 
 		switch mType {
 		case "gauge":
-			val, ok := storage.GetGauge(name)
-			if !ok {
-				http.Error(w, "not found", http.StatusNotFound)
+			val, err := storage.GetGauge(name)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
 			fmt.Fprint(w, strconv.FormatFloat(val, 'f', -1, 64))
 		case "counter":
-			val, ok := storage.GetCounter(name)
-			if !ok {
-				http.Error(w, "not found", http.StatusNotFound)
+			val, err := storage.GetCounter(name)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
 			fmt.Fprintf(w, "%d", val)
@@ -67,9 +67,9 @@ func ListHandler(storage Storage) http.HandlerFunc {
 		counters := storage.AllCounters()
 
 		tmpl := `<html><body><h1>Metrics</h1><ul>
-        {{ range $k, $v := .Gauges }}<li>{{$k}} (gauge): {{$v}}</li>{{ end }}
-        {{ range $k, $v := .Counters }}<li>{{$k}} (counter): {{$v}}</li>{{ end }}
-        </ul></body></html>`
+   {{ range $k, $v := .Gauges }}<li>{{$k}} (gauge): {{$v}}</li>{{ end }}
+   {{ range $k, $v := .Counters }}<li>{{$k}} (counter): {{$v}}</li>{{ end }}
+   </ul></body></html>`
 
 		t := template.Must(template.New("metrics").Parse(tmpl))
 		_ = t.Execute(w, map[string]interface{}{
