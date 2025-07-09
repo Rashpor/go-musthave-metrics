@@ -1,13 +1,19 @@
 package main
 
 import (
-	"log"
+	"os"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/Rashpor/go-musthave-metrics/internal/agent"
 )
 
 func main() {
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+
 	cfg := agent.NewConfig()
 
 	log.Printf("Agent config: addr=%s, report=%ds, poll=%ds", cfg.Address, cfg.ReportInterval, cfg.PollInterval)
