@@ -14,6 +14,7 @@ func NewRouter(storage Storage) http.Handler {
 	r.Use(LoggingMiddleware)
 
 	r.Use(middleware.DecompressMiddleware)
+	r.Use(middleware.GzipMiddleware)
 
 	r.Post("/update/{type}/{name}/{value}", UpdateHandler(storage))
 	r.Post("/update/", UpdateJSONHandler(storage))
