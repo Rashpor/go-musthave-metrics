@@ -9,6 +9,9 @@ import (
 func NewRouter(storage Storage) http.Handler {
 
 	r := chi.NewRouter()
+
+	r.Use(LoggingMiddleware)
+
 	r.Post("/update/{type}/{name}/{value}", UpdateHandler(storage))
 	r.Get("/value/{type}/{name}", ValueHandler(storage))
 	r.Get("/", ListHandler(storage))
