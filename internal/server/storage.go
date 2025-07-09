@@ -1,7 +1,9 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"sync"
 )
@@ -88,4 +90,64 @@ func (m *MemStorage) GetCounter(name string) (int64, error) {
 		return 0, fmt.Errorf("counter metric not found: %s", name)
 	}
 	return val, nil
+}
+
+// snapshot для сохранения
+type snapshot struct {
+	Gauges   map[string]float64 `json:"gauges"`
+	Counters map[string]int64   `json:"counters"`
+}
+
+// SaveToFile сохраняет текущее состояние в файл
+func (m *MemStorage) SaveToFile(path string) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	snap := snapshot{
+		Gauges:   make(map[string]float64, len(m.gauges)),
+		Counters: make(map[string]int64, len(m.counters)),
+	}
+	for k, v := range m.gauges {
+		snap.Gauges[k] = v
+	}
+	for k, v := range m.counters {
+		snap.Counters[k] = v
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	enc := json.NewEncoder(file)
+	return enc.Encode(snap)
+}
+
+// LoadFromFile загружает состояние из файла, если он существует
+func (m *MemStorage) LoadFromFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // нечего загружать
+		}
+		return err
+	}
+	defer file.Close()
+
+	var snap snapshot
+	if err := json.NewDecoder(file).Decode(&snap); err != nil {
+		return err
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for k, v := range snap.Gauges {
+		m.gauges[k] = v
+	}
+	for k, v := range snap.Counters {
+		m.counters[k] = v
+	}
+	return nil
 }
