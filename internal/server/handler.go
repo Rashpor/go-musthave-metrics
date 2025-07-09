@@ -135,8 +135,7 @@ func UpdateJSONHandler(storage Storage) http.HandlerFunc {
 		if m.MType == models.Gauge {
 			val, err := storage.GetGauge(m.ID)
 			if err == nil {
-				gauge := models.Float64(val)
-				resp.Value = &gauge
+				resp.Value = &val
 			}
 		} else if m.MType == models.Counter {
 			val, err := storage.GetCounter(m.ID)
@@ -180,8 +179,7 @@ func ValueJSONHandler(storage Storage) http.HandlerFunc {
 				http.Error(w, "Gauge not found", http.StatusNotFound)
 				return
 			}
-			gauge := models.Float64(val)
-			resp.Value = &gauge
+			resp.Value = &val
 		case models.Counter:
 			val, err := storage.GetCounter(m.ID)
 			if err != nil {
