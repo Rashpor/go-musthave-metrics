@@ -44,7 +44,7 @@ func (s *Sender) Send(gauges map[string]float64, counters map[string]int64) erro
 
 func (s *Sender) Send(gauges map[string]float64, counters map[string]int64) error {
 	for name, value := range gauges {
-		val := value // избегаем захвата в замыкании
+		val := models.Float64(value)
 		metric := models.Metrics{
 			ID:    name,
 			MType: models.Gauge,
