@@ -1,12 +1,15 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/Rashpor/go-musthave-metrics/models"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -76,5 +79,120 @@ func ListHandler(storage Storage) http.HandlerFunc {
 			"Gauges":   gauges,
 			"Counters": counters,
 		})
+	}
+}
+
+func UpdateJSONHandler(storage Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
+			return
+		}
+
+		var m models.Metrics
+		if err := json.Unmarshal(body, &m); err != nil {
+			http.Error(w, "Invalid JSON format", http.StatusBadRequest)
+			return
+		}
+
+		switch m.MType {
+		case models.Gauge:
+			if m.Value == nil {
+				http.Error(w, "Missing value for gauge", http.StatusBadRequest)
+				return
+			}
+			err := storage.Update("gauge", m.ID, fmt.Sprintf("%f", *m.Value))
+			if err != nil {
+				http.Error(w, "Failed to update gauge", http.StatusBadRequest)
+				return
+			}
+		case models.Counter:
+			if m.Delta == nil {
+				http.Error(w, "Missing delta for counter", http.StatusBadRequest)
+				return
+			}
+			err := storage.Update("counter", m.ID, fmt.Sprintf("%d", *m.Delta))
+			if err != nil {
+				http.Error(w, "Failed to update counter", http.StatusBadRequest)
+				return
+			}
+		default:
+			http.Error(w, "Unknown metric type", http.StatusNotImplemented)
+			return
+		}
+
+		// Возвращаем обновлённую метрику
+		var resp models.Metrics
+		resp.ID = m.ID
+		resp.MType = m.MType
+
+		if m.MType == models.Gauge {
+			val, err := storage.GetGauge(m.ID)
+			if err == nil {
+				resp.Value = &val
+			}
+		} else if m.MType == models.Counter {
+			val, err := storage.GetCounter(m.ID)
+			if err == nil {
+				resp.Delta = &val
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}
+}
+
+func ValueJSONHandler(storage Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
+			return
+		}
+
+		var m models.Metrics
+		if err := json.Unmarshal(body, &m); err != nil {
+			http.Error(w, "Invalid JSON format", http.StatusBadRequest)
+			return
+		}
+
+		var resp models.Metrics
+		resp.ID = m.ID
+		resp.MType = m.MType
+
+		switch m.MType {
+		case models.Gauge:
+			val, err := storage.GetGauge(m.ID)
+			if err != nil {
+				http.Error(w, "Gauge not found", http.StatusNotFound)
+				return
+			}
+			resp.Value = &val
+		case models.Counter:
+			val, err := storage.GetCounter(m.ID)
+			if err != nil {
+				http.Error(w, "Counter not found", http.StatusNotFound)
+				return
+			}
+			resp.Delta = &val
+		default:
+			http.Error(w, "Unknown metric type", http.StatusNotImplemented)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
 	}
 }

@@ -13,6 +13,8 @@ func NewRouter(storage Storage) http.Handler {
 	r.Use(LoggingMiddleware)
 
 	r.Post("/update/{type}/{name}/{value}", UpdateHandler(storage))
+	r.Post("/update/", UpdateJSONHandler(storage))
+	r.Post("/value/", ValueJSONHandler(storage))
 	r.Get("/value/{type}/{name}", ValueHandler(storage))
 	r.Get("/", ListHandler(storage))
 	return r

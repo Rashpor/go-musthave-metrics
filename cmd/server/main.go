@@ -18,7 +18,6 @@ func main() {
 	cfg := server.NewConfig()
 
 	log.Info().Msgf("Starting server on %s...", cfg.Address)
-	//log.Printf("Starting server on %s...", cfg.Address)
 
 	storage := server.NewMemStorage()
 	router := server.NewRouter(storage)
