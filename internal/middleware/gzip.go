@@ -24,6 +24,7 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Устанавливаем заголовок и оборачиваем ответ
+		w.Header().Set("Vary", "Accept-Encoding")
 		w.Header().Set("Content-Encoding", "gzip")
 
 		gz := gzip.NewWriter(w)

@@ -66,6 +66,9 @@ func ValueHandler(storage Storage) http.HandlerFunc {
 
 func ListHandler(storage Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
 		gauges := storage.AllGauges()
 		counters := storage.AllCounters()
 
