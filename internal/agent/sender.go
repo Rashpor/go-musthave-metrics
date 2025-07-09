@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,25 +23,6 @@ func NewSender(serverAddr string) *Sender {
 		client:     &http.Client{},
 	}
 }
-
-/*
-func (s *Sender) Send(gauges map[string]float64, counters map[string]int64) error {
-	for name, value := range gauges {
-		err := s.sendMetric("gauge", name, strconv.FormatFloat(value, 'f', -1, 64))
-		if err != nil {
-			return err
-		}
-	}
-
-	for name, value := range counters {
-		err := s.sendMetric("counter", name, strconv.FormatInt(value, 10))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-*/
 
 func (s *Sender) Send(gauges map[string]float64, counters map[string]int64) error {
 	for name, value := range gauges {
@@ -70,34 +52,51 @@ func (s *Sender) Send(gauges map[string]float64, counters map[string]int64) erro
 	return nil
 }
 
-/*
-func (s *Sender) sendMetric(metricType, name, value string) error {
-	url := fmt.Sprintf("%s/update/%s/%s/%s", s.serverAddr, metricType, name, value)
-
-	start := time.Now()
-
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+func (s *Sender) sendJSONMetric(metric models.Metrics) error {
+	data, err := json.Marshal(metric)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("metric_type", metricType).
-			Str("name", name).
-			Str("value", value).
+			Str("id", metric.ID).
+			Str("type", metric.MType).
+			Msg("failed to marshal metric to JSON")
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	// Сжимаем JSON через gzip
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	_, err = gz.Write(data)
+	if err != nil {
+		return fmt.Errorf("failed to write gzip: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("failed to close gzip writer: %w", err)
+	}
+
+	// Создаём HTTP-запрос с сжатым телом
+	req, err := http.NewRequest(http.MethodPost, s.serverAddr+"/update/", &buf)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("id", metric.ID).
+			Str("type", metric.MType).
 			Msg("failed to create HTTP request")
 		return err
 	}
-	req.Header.Set("Content-Type", "text/plain")
 
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+
+	start := time.Now()
 	resp, err := s.client.Do(req)
 	duration := time.Since(start)
 
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("url", url).
-			Str("metric_type", metricType).
-			Str("name", name).
-			Str("value", value).
+			Str("id", metric.ID).
+			Str("type", metric.MType).
 			Dur("duration", duration).
 			Msg("HTTP request failed")
 		return err
@@ -107,10 +106,8 @@ func (s *Sender) sendMetric(metricType, name, value string) error {
 	if resp.StatusCode != http.StatusOK {
 		log.Warn().
 			Int("status", resp.StatusCode).
-			Str("url", url).
-			Str("metric_type", metricType).
-			Str("name", name).
-			Str("value", value).
+			Str("id", metric.ID).
+			Str("type", metric.MType).
 			Dur("duration", duration).
 			Msg("unexpected HTTP response status")
 		return fmt.Errorf("unexpected status: %d", resp.StatusCode)
@@ -118,18 +115,17 @@ func (s *Sender) sendMetric(metricType, name, value string) error {
 
 	log.Info().
 		Str("method", req.Method).
-		Str("url", url).
+		Str("url", req.URL.String()).
 		Int("status", resp.StatusCode).
-		Str("metric_type", metricType).
-		Str("name", name).
-		Str("value", value).
+		Str("id", metric.ID).
+		Str("type", metric.MType).
 		Dur("duration", duration).
 		Msg("sent metric successfully")
 
 	return nil
 }
-*/
 
+/*
 func (s *Sender) sendJSONMetric(metric models.Metrics) error {
 	data, err := json.Marshal(metric)
 	if err != nil {
@@ -190,3 +186,4 @@ func (s *Sender) sendJSONMetric(metric models.Metrics) error {
 
 	return nil
 }
+*/

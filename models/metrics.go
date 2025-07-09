@@ -17,12 +17,3 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 	Hash  string   `json:"hash,omitempty"`
 }
-
-/*
-// Float64 — тип-обёртка для float64 с кастомной сериализацией
-type Float64 float64
-
-func (f Float64) MarshalJSON() ([]byte, error) {
-	// %.17g — печатает до 17 значащих цифр, не добавляя лишнего
-	return []byte(fmt.Sprintf("%.17g", f)), nil
-}*/
