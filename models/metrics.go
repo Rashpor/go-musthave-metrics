@@ -24,7 +24,15 @@ type Metrics struct {
 	Hash  string   `json:"hash,omitempty"`
 }
 
+/*
 func (f Float64) MarshalJSON() ([]byte, error) {
 	// Используем 'g', 17, 64 для полной точности
 	return []byte(fmt.Sprintf("%.17g", f)), nil
+}*/
+
+func (f *Float64) MarshalJSON() ([]byte, error) {
+	if f == nil {
+		return []byte("null"), nil
+	}
+	return []byte(fmt.Sprintf("%.17g", *f)), nil
 }
